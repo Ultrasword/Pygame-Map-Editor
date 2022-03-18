@@ -10,7 +10,7 @@ class Handler:
         """Handler constructor"""
         # entities
         self.entities = {}
-        self.active_entites = deque()
+        self.active_entites = []
 
         # world
         self.world = {}
@@ -22,15 +22,22 @@ class Handler:
     def add_entity(self, entity):
         """Add entity to the world"""
         self.entities[entity.id] = entity
+        self.active_entites.append(entity.id)
+        # sort
+        self.active_entites.sort(key=lambda x: self.entities[x].z_index)
     
     def add_chunk(self, chunk):
         """Add chunk to the world"""
         # the chunk id is a hash of the position
         self.world[chunk.id] = chunk
     
+    def get_active_entities(self):
+        for i in self.active_entites:
+            yield self.entities[i]
+
     def update_and_render_entities(self, window, dt, offset):
         """Update and render entities"""
-        for entity in self.entities.values():
+        for entity in self.get_active_entities():
             entity.update(dt)
             if entity.moved:
                 if entity.gravity:
@@ -38,7 +45,7 @@ class Handler:
                 self.move_entity(entity)
             entity.render(window, offset)
             # debug
-            entity.debug_render(window, offset)
+            # entity.debug_render(window, offset)
     
     def render_chunks(self, window, offset):
         """Render all active chunks"""

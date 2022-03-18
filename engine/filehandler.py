@@ -12,10 +12,15 @@ images = {}
 def get_image(img):
     """get and image"""
     if not images.get(img):
-        if img.endswith(".png"):
-            image = pygame.image.load(img).convert_alpha()
-        else:
-            image = pygame.image.load(img).convert()
+        image = pygame.image.load(img).convert()
+        images[img] = image
+    return images[img]
+
+
+def get_transparent_image(img):
+    """get and image"""
+    if not images.get(img):
+        image = pygame.image.load(img).convert_alpha()
         images[img] = image
     return images[img]
 

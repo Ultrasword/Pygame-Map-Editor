@@ -2,12 +2,14 @@ import pygame
 import pyperclip
 
 
-from engine import window, user_input, clock, statehandler, state
+from engine import window, user_input, clock, statehandler, state, filehandler
 from src import editor_box
+
+FPS = 24
 
 
 window.create_instance("Level Editor", 1280, 720)
-window.create_clock(30)
+window.create_clock(FPS)
 
 BACK_COLOR = (0, 19, 35)
 CONTAINER_COLOR = (0, 8, 14)
@@ -17,36 +19,50 @@ statehandler.push_state(global_state)
 
 
 # sidebar
-back = editor_box.Editor_Box(None, 0.01, 0.01, 0.3, 0.99)
+hovering_items = []
+
+
+back = editor_box.Editor_Box(None, 0.005, 0.01, 0.3, 0.99)
 back.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(back)
 
-back.create_child(0.01, 0.01, 0.99, 0.99)
+container = back.create_child(editor_box.Editor_Box, 0.01, 0.01, 0.99, 0.99)
+container.column = 3
+# hovering_items.append(container)
 
-
+item = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
+item.sprite_path = "assets/art.png"
+item.grid_position = 1
+container.apply_all_transformations(item)
 
 # editor box
-editor = editor_box.Editor_Box(None, 0.31, 0.01, 0.99, 0.99)
+editor = editor_box.Editor_Box(None, 0.305, 0.01, 0.995, 0.99)
 editor.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(editor)
 
+# ----------------
 
 changed = True
 running = True
-clock.start(30)
+clock.start(FPS)
 while running:
 
     if statehandler.CURRENT.handler.changed:
         window.FRAMEBUFFER.fill(BACK_COLOR)
 
-    statehandler.CURRENT.handler.render_chunks(window.FRAMEBUFFER, (0,0))
+    for item in hovering_items:
+        if item.hover:
+            break
+
+    # statehandler.CURRENT.handler.render_chunks(window.FRAMEBUFFER, (0,0))
     statehandler.CURRENT.handler.update_and_render_entities(window.FRAMEBUFFER, clock.delta_time, (0,0))
+    # print(item.sprite.get_size())
+    # window.FRAMEBUFFER.blit(test, (0,0))
 
     if statehandler.CURRENT.handler.changed:
         window.INSTANCE.blit(window.FRAMEBUFFER, (0,0))
         statehandler.CURRENT.handler.changed = False
     pygame.display.update()
-
 
     # for loop through events
     for e in pygame.event.get():
