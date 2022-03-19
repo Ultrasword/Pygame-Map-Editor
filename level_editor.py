@@ -2,8 +2,8 @@ import pygame
 import pyperclip
 
 
-from engine import window, user_input, clock, statehandler, state, filehandler
-from src import editor_box
+from engine import window, user_input, clock, statehandler, state, filehandler, eventhandler
+from src import editor_box, art_tool
 
 FPS = 24
 
@@ -40,7 +40,24 @@ editor = editor_box.Editor_Box(None, 0.305, 0.01, 0.995, 0.99)
 editor.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(editor)
 
-# ----------------
+# add actual editing area
+editor_area = editor.create_child(editor_box.LevelEditor, 0.01, 0.01, 0.99, 0.99)
+editor_area.fill_color((255,255,255))
+editor_area.set_brush_icon(filehandler.get_image("assets/art.png"))
+
+# set art tool
+
+
+# ---------------- test
+
+test_event = eventhandler.Event({"1": "TESTING!!!"})
+eventhandler.register_event(test_event.eid)
+
+def func(data):
+    print(data)
+eventhandler.register_func_to_event(test_event.eid, func)
+
+
 
 changed = True
 running = True
@@ -90,6 +107,7 @@ while running:
             user_input.update_ratio(window.WIDTH, window.HEIGHT, window.ORIGINAL_WIDTH, window.ORIGINAL_HEIGHT)
     # update keyboard
     user_input.update()
+    eventhandler.update_events()
 
     clock.update()
     window.GLOBAL_CLOCK.tick(clock.FPS)

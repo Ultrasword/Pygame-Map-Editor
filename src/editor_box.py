@@ -1,4 +1,5 @@
 from engine import entity, filehandler, window, statehandler, user_input
+from src import art_tool
 
 
 class Editor_Box(entity.Entity):
@@ -11,7 +12,7 @@ class Editor_Box(entity.Entity):
         else:
             entity.set_entity_properties(window.WIDTH * left, window.HEIGHT * top, window.WIDTH * (right - left), window.HEIGHT * (bottom - top), None, self)
         if back:
-            self.background = filehandler.create_surface(self.area[0], self.area[1], flags=filehandler.SRCALPHA).convert()
+            self.background = filehandler.create_surface(self.area[0], self.area[1]).convert()
         else:
             self.background = None
 
@@ -42,7 +43,7 @@ class Editor_Box(entity.Entity):
     def render(self, window, offset):
         """Render entity"""
         if self.dirty:
-            print("rednering", self.id)
+            # print("rednering", self.id)
             self.image = self.background
             self.dirty = False
             window.blit(self.image, (self.pos[0] + offset[0], self.pos[1] + offset[1]))
@@ -135,7 +136,7 @@ class Editor_Box(entity.Entity):
 
 class SideBarSelection(Editor_Box):
     def __init__(self, parent, left, top, right, bottom):
-        """Constructor for """
+        """Constructor for side bar item selection"""
         super().__init__(parent, left, top, right, bottom)
         # selecion
         self.items = []
@@ -149,7 +150,8 @@ class SideBarItem(Editor_Box):
         self.image_path = None
         # image etc
         # print(self.pos, self.area)
-    
+        self.clicked = False
+
     @property
     def sprite(self):
         """Get the sprite path"""
@@ -173,4 +175,47 @@ class SideBarItem(Editor_Box):
     def update(self, dt):
         # check if mouse hovers and if click
         if self.hover and user_input.mouse[1]:
-            print("CLICKED!!!!")
+            print("CLICKED!!!")
+            art_tool.ART_ITEM_SELECTION = self
+
+
+class LevelEditor(Editor_Box):
+    def __init__(self, parent, left, top, right, bottom):
+        """Constructor for the level editor box"""
+        super().__init__(parent, left, top, right, bottom)
+        # level editor stuffs
+        self.brush = None
+        self.block_width = int(self.area[0] // 16)
+        # acts as a camera
+        self.offset = [0, 0]
+
+        # set to default brush
+        self.brush = art_tool.Brush(None, 1)
+
+    @property
+    def user_brush(self):
+        """Return the current brush"""
+        return self.brush
+
+    @user_brush.setter
+    def user_brush(self, new):
+        """Set the current brush"""
+        self.brush = new
+    
+    def set_brush_icon(self, icon):
+        """Set the brush icon"""
+        self.brush.icon = filehandler.scale(icon, (self.block_width, self.block_width))
+
+    def update(self, dt):
+        """Updates editor area"""
+        # get mouse and make it relative
+        if self.hover:
+            self.dirty = True
+            mpos = user_input.get_mouse_pos()
+            rpos = [mpos[0] - self.pos[0], mpos[1] - self.pos[1]]
+            # 
+            self.background.fill((255,255,255))
+            art_tool.paint_with_brush(self.background, rpos, self.brush, self)
+
+            # draw to image
+            self.image = self.background
