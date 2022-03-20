@@ -50,3 +50,10 @@ def yflip(img):
 def create_surface(width, height, flags=0, depth=32):
     """Create a surface object"""
     return pygame.Surface((width, height), flags, depth)
+
+
+def cut(x, y, w, h, img):
+    """Cuts part of an image out"""
+    result = pygame.Surface((w,h)).convert()
+    result.blit(img, (0, 0), (x, y, w, h))
+    return result

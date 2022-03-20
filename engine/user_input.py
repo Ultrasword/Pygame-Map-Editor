@@ -1,9 +1,19 @@
 """Handles keyboard and mouse inputs in pygame"""
+import pygame
 
 
 # keyboard
 keys = {}
 pressed = set()
+
+# hardware mapping :D
+key_map = {
+    "left": pygame.K_a,
+    "up": pygame.K_w,
+    "right": pygame.K_d,
+    "down": pygame.K_s,
+    "space": pygame.K_SPACE
+}
 
 
 def key_press(key_event):

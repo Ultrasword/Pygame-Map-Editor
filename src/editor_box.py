@@ -1,4 +1,6 @@
-from engine import entity, filehandler, window, statehandler, user_input
+import pygame
+import json
+from engine import entity, filehandler, window, statehandler, user_input, draw
 from src import art_tool
 
 
@@ -133,6 +135,10 @@ class Editor_Box(entity.Entity):
         """Set the grid pos"""
         self.grid_pos = pos
 
+    @property
+    def clicked(self):
+        return self.hover and user_input.mouse[1]
+
 
 class SideBarSelection(Editor_Box):
     def __init__(self, parent, left, top, right, bottom):
@@ -141,6 +147,66 @@ class SideBarSelection(Editor_Box):
         # selecion
         self.items = []
         self.selected = []
+        self.used_pos = set()
+
+    def find_lowest_pos(self):
+        """Find the lowest pos for an item part"""
+        if not self.used_pos:
+            return 0
+        low = 0
+        if low == min(self.used_pos):
+            # then find the next lowest that is greater than 0
+            while low in self.used_pos:
+                low += 1
+            self.used_pos.add(low)
+            return low
+        else:
+            self.used_pos.add(0)
+            return 0
+    
+    def apply_all_transformations(self, child):
+        """Apply all padding, scaling, etc"""
+        # transform the image
+        self.column
+        n = child.grid_pos % self.column
+        child.pos[0] = self.pos[0] + self.item_width * n
+        n = child.grid_pos // self.column
+        child.pos[1] = self.pos[1] + self.item_width * n
+        child.area[0] = self.item_width
+        child.area[1] = self.item_width
+        # scale image
+        child.background = filehandler.scale(filehandler.get_image(child.sprite_path), 
+                    (self.item_width, self.item_width))
+        # add to the set
+        self.used_pos.add(child.grid_pos)
+
+    def load_spritesheet(self, file_path):
+        """Load a spritesheet from json file"""
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            file.close()
+        # load the data
+        image = data["file"]
+        width = data["tile_width"]
+        height = data["tile_height"]
+        tile_pos = data["tiles"]
+        sprite_sheet = filehandler.get_image(image)
+        # add each child to the children
+        for pos in tile_pos:
+            # get x and y pos
+            x, y = map(int, pos.split("."))
+            # grab sprite from the image
+            px = x * width
+            py = y * height
+            # grab image and paste onto new surface
+            item = self.create_child(SideBarItem, 0.05, 0.05, 0.3, 0.3)
+            item.sprite_path = image
+            item.grid_pos = self.find_lowest_pos()
+            self.apply_all_transformations(item)
+            # set image
+            item.background = filehandler.scale(filehandler.cut(px, py, width, height, sprite_sheet), (self.item_width, self.item_width))
+        # ggs
+
 
 
 class SideBarItem(Editor_Box):
@@ -150,7 +216,6 @@ class SideBarItem(Editor_Box):
         self.image_path = None
         # image etc
         # print(self.pos, self.area)
-        self.clicked = False
 
     @property
     def sprite(self):
@@ -174,8 +239,10 @@ class SideBarItem(Editor_Box):
 
     def update(self, dt):
         # check if mouse hovers and if click
-        if self.hover and user_input.mouse[1]:
-            print("CLICKED!!!")
+        if self.clicked:
+            if art_tool.ACTIVE_EDITOR:
+                art_tool.ACTIVE_EDITOR.user_brush.icon_image = self.sprite
+            # print("CLICKED!!!")
             art_tool.ART_ITEM_SELECTION = self
 
 
@@ -187,10 +254,27 @@ class LevelEditor(Editor_Box):
         self.brush = None
         self.block_width = int(self.area[0] // 16)
         # acts as a camera
-        self.offset = [0, 0]
+        self.c_offset = [0, 0]
+        self.grid_color = (0,0,0)
 
         # set to default brush
-        self.brush = art_tool.Brush(None, 1)
+        self.brush = art_tool.Brush(None, 1, self.block_width)
+
+        # movespeed
+        self.move_speed = 400
+
+        # sprites that can be used
+        self.spritesheets = {}
+
+    @property
+    def grid_outline_color(self):
+        """Return the grid color"""
+        return self.grid_color
+    
+    @grid_outline_color.setter
+    def grid_outline_color(self, col):
+        """Set grid outline color"""
+        self.grid_color = col
 
     @property
     def user_brush(self):
@@ -204,18 +288,65 @@ class LevelEditor(Editor_Box):
     
     def set_brush_icon(self, icon):
         """Set the brush icon"""
-        self.brush.icon = filehandler.scale(icon, (self.block_width, self.block_width))
+        self.brush.icon_image = filehandler.scale(icon, (self.block_width, self.block_width))
 
     def update(self, dt):
         """Updates editor area"""
         # get mouse and make it relative
-        if self.hover:
+        # offset stuff
+        if user_input.is_key_pressed(pygame.K_LEFT):
+            self.c_offset[0] -= self.move_speed * dt
             self.dirty = True
+        if user_input.is_key_pressed(pygame.K_RIGHT):
+            self.c_offset[0] += self.move_speed * dt
+            self.dirty = True
+        if user_input.is_key_pressed(pygame.K_UP):
+            self.c_offset[1] -= self.move_speed * dt
+            self.dirty = True
+        if user_input.is_key_pressed(pygame.K_DOWN):
+            self.c_offset[1] += self.move_speed * dt
+            self.dirty = True
+
+        # hover
+        if self.hover or self.dirty:
+            art_tool.ACTIVE_EDITOR = self
+            self.dirty = True
+
             mpos = user_input.get_mouse_pos()
             rpos = [mpos[0] - self.pos[0], mpos[1] - self.pos[1]]
             # 
             self.background.fill((255,255,255))
             art_tool.paint_with_brush(self.background, rpos, self.brush, self)
+            art_tool.brush_hover_outline(self.background, rpos, self.brush, self)
 
             # draw to image
             self.image = self.background
+
+    def render(self, window, offset):
+        """Render the art system with grids"""
+        if self.dirty:
+            # print("rednering", self.id)
+            self.image = self.background
+            self.dirty = False
+            # draw grids
+            left = 0
+            top = 0
+            right = int(self.area[0] // self.block_width)
+            bottom = int(self.area[1] // self.block_width)
+            # draw vertical lines
+            xoff, yoff = self.c_offset[0] % self.block_width, self.c_offset[1] % self.block_width
+            extend = self.block_width
+            for x in range(left, right+1):
+                draw.DEBUG_DRAW_LINE(self.background, self.grid_color,
+                    (x * self.block_width + offset[0] - xoff, offset[1] - yoff), 
+                    (x * self.block_width + offset[0] - xoff, self.area[1] + offset[1] - yoff + extend))
+            # draw horizontal lines
+            for y in range(top, bottom+2):
+                draw.DEBUG_DRAW_LINE(self.background, self.grid_color,
+                    (offset[0] - xoff, y * self.block_width + offset[1] - yoff),
+                    (self.area[0] + offset[0] - xoff, y * self.block_width + offset[1] - yoff))
+
+            # draw onto window
+            window.blit(self.image, (self.pos[0] + offset[0], self.pos[1] + offset[1]))
+            statehandler.CURRENT.handler.changed = True
+

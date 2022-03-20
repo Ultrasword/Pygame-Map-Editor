@@ -26,14 +26,21 @@ back = editor_box.Editor_Box(None, 0.005, 0.01, 0.3, 0.99)
 back.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(back)
 
-container = back.create_child(editor_box.Editor_Box, 0.01, 0.01, 0.99, 0.99)
+container = back.create_child(editor_box.SideBarSelection, 0.01, 0.01, 0.99, 0.99)
 container.column = 3
 # hovering_items.append(container)
 
-item = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
-item.sprite_path = "assets/art.png"
-item.grid_position = 1
-container.apply_all_transformations(item)
+# item = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
+# item.sprite_path = "assets/art.png"
+# item.grid_position = 1
+# container.apply_all_transformations(item)
+
+# item2 = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
+# item2.sprite_path = "assets/yticon.jpg"
+# item2.grid_position = 2
+# container.apply_all_transformations(item2)
+
+container.load_spritesheet("assets/spritesheets/grass.json")
 
 # editor box
 editor = editor_box.Editor_Box(None, 0.305, 0.01, 0.995, 0.99)
