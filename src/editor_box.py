@@ -1,6 +1,6 @@
 import pygame
 import json
-from engine import entity, filehandler, window, statehandler, user_input, draw
+from engine import entity, filehandler, window, statehandler, user_input, draw, chunk, maths
 from src import art_tool
 
 
@@ -208,7 +208,6 @@ class SideBarSelection(Editor_Box):
         # ggs
 
 
-
 class SideBarItem(Editor_Box):
     def __init__(self, parent, left, top, right, bottom):
         """Constructor for a side bar item"""
@@ -349,4 +348,38 @@ class LevelEditor(Editor_Box):
             # draw onto window
             window.blit(self.image, (self.pos[0] + offset[0], self.pos[1] + offset[1]))
             statehandler.CURRENT.handler.changed = True
+
+
+class TileMap(Editor_Box):
+    def __init__(self, parent, l, t, r, b):
+        """Constructor for a tilemap - fills 100% of parent object"""
+        super().__init__(parent, 0, 0, 1, 1)
+        
+        # chunks dict
+        self.chunks = {}
+    
+    def set_tile_at(self, x, y, img: str):
+        """Sets a tile at a given position"""
+        # find the chunk it is located in
+        cx = x // chunk.CHUNK_WIDTH
+        cy = y // chunk.CHUNK_HEIGHT
+        # create chunk if not exist
+        h = maths.two_hash(cx, cy)
+        crx = maths.mod(x, chunk.CHUNK_WIDTH) // chunk.TILE_WIDTH
+        cry = maths.mod(y, chunk.CHUNK_HEIGHT) // chunk.TILE_WIDTH
+        if self.chunks.get(h):
+            # set pos
+            self.chunks.get(h).set_tile_at([crx, cry, img])
+        else:
+            # make a chunk
+            new_chunk = chunk.Chunk(cx, cy)
+            new_chunk.set_tile_at([crx, cry, img])
+            self.chunks[h] = new_chunk
+    
+    def update(self, dt):
+        """update the stuff"""
+        # set the background image to the parent background
+        # draw directly onto parent background
+        
+        pass
 

@@ -47,10 +47,17 @@ editor = editor_box.Editor_Box(None, 0.305, 0.01, 0.995, 0.99)
 editor.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(editor)
 
+
 # add actual editing area
 editor_area = editor.create_child(editor_box.LevelEditor, 0.01, 0.01, 0.99, 0.99)
 editor_area.fill_color((255,255,255))
 editor_area.set_brush_icon(filehandler.get_image("assets/art.png"))
+editor_area.z_index = 2
+
+# tile map
+tilemap = editor_area.create_child(editor_box.TileMap, 0, 0, 1, 1)
+tilemap.fill_color((255, 255, 255))
+tilemap.z_index = 1
 
 # set art tool
 

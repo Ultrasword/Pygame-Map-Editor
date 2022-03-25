@@ -80,7 +80,7 @@ class Chunk:
 
     def set_tile_at(self, tile):
         """set tile at a certian x y position - position is relative to the chunk"""
-        index = tile[0] * CHUNK_WIDTH + tile[1]
+        index = tile[TILE_X] * CHUNK_WIDTH + tile[TILE_Y]
         
         # set tile and then get name
         # if the tile image string is a directory path, convert to image name
