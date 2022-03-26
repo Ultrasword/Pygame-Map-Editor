@@ -33,13 +33,9 @@ def is_key_pressed(key):
     return keys.get(key, False)
 
 
-def update():
-    """Updates keyboard - clears the pressed set"""
-    pressed.clear()
-
-
 # mouse
 mouse = [False for i in range(4)]
+mouse_pressed_this = set()
 x_pos, y_pos = 0, 0
 x_scroll, y_scroll = 0, 0
 x_move, y_move = 0, 0
@@ -50,6 +46,7 @@ def mouse_button_press(key_event):
     """Sets a mouse button to be pressed"""
     if key_event.button < 4:
         mouse[key_event.button] = True
+        mouse_pressed_this.add(key_event.button)
 
 
 def mouse_button_release(key_event):
@@ -81,3 +78,9 @@ def update_ratio(width, height, o_width, o_height):
     x_ratio = o_width / width
     y_ratio = o_height / height
 
+
+# update both mouse and keyboard
+def update():
+    """Updates keyboard - clears the pressed set"""
+    pressed.clear()
+    mouse_pressed_this.clear()

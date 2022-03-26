@@ -8,10 +8,10 @@ def paint_with_brush(window, rel_pos_to_container, brush, editor_box):
     """Paint with brush"""
     # get the position
     width = editor_box.block_width
-    relx = rel_pos_to_container[0] // editor_box.block_width
-    rely = rel_pos_to_container[1] // editor_box.block_width
+    relx = (rel_pos_to_container[0] - editor_box.c_offset[0]) // editor_box.block_width
+    rely = (rel_pos_to_container[1] - editor_box.c_offset[1]) // editor_box.block_width
     # draw the brush onto the window
-    brush.draw(window, (relx, rely), editor_box.block_width, editor_box.c_offset)
+    brush.draw(window, (relx, rely), editor_box.block_width)
 
 
 def brush_hover_outline(window, rel_pos_to_container, brush, editor_box):
@@ -21,13 +21,14 @@ def brush_hover_outline(window, rel_pos_to_container, brush, editor_box):
     relx = (rel_pos_to_container[0] - editor_box.c_offset[0]) // editor_box.block_width
     rely = (rel_pos_to_container[1] - editor_box.c_offset[1]) // editor_box.block_width
     # draw the outline to the window
-    brush.draw(window, (relx, rely), editor_box.block_width, editor_box.c_offset)
+    brush.draw(window, (relx, rely), editor_box.block_width)
 
 
 class Brush:
     def __init__(self, icon, size, width):
         """Brush constructor"""
-        self.icon = icon
+        self.icon_path = icon
+        self.icon = filehandler.scale(filehandler.get_image(icon), size) if icon else icon
         self.size = size
         self.block_width = width
 
@@ -52,13 +53,13 @@ class Brush:
         """Set brush size"""
         self.size = size
 
-    def draw(self, window, rel_pos, block_width, c_offset):
+    def draw(self, window, rel_pos, block_width):
         """Draw function"""
         # the standard brush
         # usually drawn using smaller brush sizes
         # print(rel_pos[0] * block_width, rel_pos[1] * block_width)
         if self.icon:
-            window.blit(self.icon, (rel_pos[0] * block_width + c_offset[0], rel_pos[1] * block_width + c_offset[1]))
+            window.blit(self.icon, (rel_pos[0] * block_width, rel_pos[1] * block_width))
 
         # left = rel_pos[0] * block_width
         # top = rel_pos[1] * block_width

@@ -47,7 +47,9 @@ editor_area.z_index = 2
 # tile map
 tilemap = editor_area.create_child(editor_box.TileMap, 0.05, 0.05, 0.95, 0.95)
 tilemap.fill_color((255, 255, 255))
-tilemap.z_index = 1
+tilemap.z_index = 3
+
+editor_area.set_tile_map(tilemap)
 
 # set art tool
 
@@ -58,7 +60,7 @@ test_event = eventhandler.Event({"1": "TESTING!!!"})
 eventhandler.register_event(test_event.eid)
 
 def func(data):
-    print(data)
+    print("AWDAWd")
 eventhandler.register_func_to_event(test_event.eid, func)
 
 
@@ -67,13 +69,9 @@ changed = True
 running = True
 clock.start(FPS)
 while running:
-
+    # update the background if changed
     if statehandler.CURRENT.handler.changed:
         window.FRAMEBUFFER.fill(BACK_COLOR)
-
-    for item in hovering_items:
-        if item.hover:
-            break
 
     # statehandler.CURRENT.handler.render_chunks(window.FRAMEBUFFER, (0,0))
     statehandler.CURRENT.handler.update_and_render_entities(window.FRAMEBUFFER, clock.delta_time, (0,0))
@@ -85,6 +83,8 @@ while running:
         statehandler.CURRENT.handler.changed = False
     pygame.display.update()
 
+    # user input update
+    user_input.update()
     # for loop through events
     for e in pygame.event.get():
         # handle different events
@@ -110,7 +110,6 @@ while running:
             window.handle_resize(e)
             user_input.update_ratio(window.WIDTH, window.HEIGHT, window.ORIGINAL_WIDTH, window.ORIGINAL_HEIGHT)
     # update keyboard
-    user_input.update()
     eventhandler.update_events()
 
     clock.update()

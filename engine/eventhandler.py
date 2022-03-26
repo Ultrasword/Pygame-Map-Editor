@@ -26,10 +26,11 @@ def update_events():
 
 
 REGISTERED_EVENTS = {} # a eid and event pair
-REGISTERED_OBJECTS = {} # a eid and set(object obejct) pair
+REGISTERED_OBJECTS = {} # a eid and dict(object obejct) pair
 
 
 EVENT_ID_COUNT = 0
+FUNC_REG_ID = 0
 
 
 def register_event(eid: int):
@@ -37,26 +38,37 @@ def register_event(eid: int):
     global REGISTERED_EVENTS, REGISTERED_OBJECTS
     # create registries within the dicts
     REGISTERED_EVENTS[eid] = EventRegistry(eid)
-    REGISTERED_OBJECTS[eid] = set()
+    REGISTERED_OBJECTS[eid] = {}
     return eid
 
 
 def register_func_to_event(eid, func):
     """Register a function/object to an event"""
-    global REGISTERED_OBJECTS
+    global REGISTERED_OBJECTS, FUNC_REG_ID
     # if not registered, register the event
     if REGISTERED_OBJECTS.get(eid) == None: 
         raise RegistryNotFound(eid)
+    # increment
+    FUNC_REG_ID += 1
     # register the event now
-    REGISTERED_OBJECTS[eid].add(func)
+    REGISTERED_OBJECTS[eid][FUNC_REG_ID] = func
+    return FUNC_REG_ID
+
+
+def remove_func_id(id):
+    """remove a func id"""
+    global REGISTERED_OBJECTS
+    for eid, data in REGISTERED_OBJECTS.items():
+        if id in data:
+            data.pop(id)
 
 
 def call_event(eid, data):
     """Call all functions registered into the eid"""
     global REGISTERED_OBJECTS, REGISTERED_EVENTS
-    for e in REGISTERED_OBJECTS[eid]:
+    for e, func in REGISTERED_OBJECTS[eid].items():
         # registered objects
-        e(data)
+        func(data)
 
 
 class EventDataBlock:

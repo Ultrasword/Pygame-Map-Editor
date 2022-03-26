@@ -24,7 +24,8 @@ for p in [[[x - 2, y - 2] for x in range(5)] for y in range(5)]:
 add_index = 0
 
 def tuple_to_str(tp):
-    return ';'.join([str(v) for v in tp])
+    return ';'.join([str(int(v)) for v in tp])
 
 def str_to_tuple(s):
     return tuple([int(v) for v in s.split(';')])
+

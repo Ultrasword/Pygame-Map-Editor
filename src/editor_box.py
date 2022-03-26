@@ -1,6 +1,6 @@
 import pygame
 import json
-from engine import entity, filehandler, window, statehandler, user_input, draw, chunk, maths
+from engine import entity, filehandler, window, statehandler, user_input, draw, chunk, maths, eventhandler
 from src import art_tool
 
 
@@ -13,9 +13,11 @@ class Editor_Box(entity.Entity):
             ypos = parent.area[1] * top + parent.pos[1]
             width = parent.area[0] * (right - left)
             height = parent.area[1] * (bottom - top)
+            self.rel_pos = [parent.area[0] * left, parent.area[1] * top, self.area[0], self.area[1]]
             entity.set_entity_properties(xpos, ypos, width, height, None, self)
         else:
             entity.set_entity_properties(window.WIDTH * left, window.HEIGHT * top, window.WIDTH * (right - left), window.HEIGHT * (bottom - top), None, self)
+            self.rel_pos = [self.pos[0], self.pos[1], self.area[0], self.area[1]]
         if back:
             self.background = filehandler.create_surface(self.area[0], self.area[1]).convert()
         else:
@@ -283,6 +285,14 @@ class LevelEditor(Editor_Box):
 
         # sprites that can be used
         self.spritesheets = {}
+
+        # custom click event for drawing onto map
+        self.tilemap = None
+        self.event = eventhandler.Event({'x':0, 'y':0, 'img':0})
+
+        # register the event function
+        eventhandler.register_event(self.event.eid)
+        self.func_eid = eventhandler.register_func_to_event(self.event.eid, lambda data: print(data))
     
     @property
     def camera_move_speed(self):
@@ -316,7 +326,16 @@ class LevelEditor(Editor_Box):
     
     def set_brush_icon(self, icon):
         """Set the brush icon"""
-        self.brush.icon_image = filehandler.scale(icon, (self.block_width, self.block_width))
+        self.brush.icon_path = icon
+        self.brush.icon_image = filehandler.scale(filehandler.get_image(icon), (self.block_width, self.block_width))
+
+    def set_tile_map(self, tile_map):
+        """set the tile map"""
+        self.tilemap = tile_map
+        # remove function from event handler
+        eventhandler.remove_func_id(self.func_eid)
+        # make new func
+        self.func_eid = eventhandler.register_func_to_event(self.event.eid, self.tilemap.set_tile_at_event)
 
     def update(self, dt):
         """Updates editor area"""
@@ -335,15 +354,33 @@ class LevelEditor(Editor_Box):
             self.c_offset[1] += self.move_speed * dt
             self.dirty = True
 
-        # hover
+        # if mouse hovering or if something was changed in the editor
         if self.hover or self.dirty:
+
+            # therefore the active editor is self
             art_tool.ACTIVE_EDITOR = self
             self.dirty = True
 
+            # mouse position
             mpos = user_input.get_mouse_pos()
-            rpos = [mpos[0] - self.pos[0], mpos[1] - self.pos[1]]
-            # 
+            rpos = [mpos[0] - self.pos[0] + self.c_offset[0], mpos[1] - self.pos[1] + self.c_offset[1]]
+
+            # some click events
+            if user_input.mouse[1]:
+                # set event data
+                self.event.data['x'] = int(rpos[0]) // self.block_width
+                self.event.data['y'] = int(rpos[1]) // self.block_width
+                self.event.data['img'] = self.brush.icon_image
+                eventhandler.add_event(self.event)
+            # print(user_input.mouse_pressed_this)
+
+            # fill back and then paint with brush
             self.background.fill((255,255,255))
+            # draw tilemap onto image
+            if self.tilemap:
+                self.tilemap.render_grid(self.background, self.c_offset)
+                # self.background.blit(self.tilemap.image, (self.tilemap.rel_pos[0] - self.c_offset[0],
+                #                 self.tilemap.rel_pos[1] - self.c_offset[1]))
             art_tool.paint_with_brush(self.background, rpos, self.brush, self)
             art_tool.brush_hover_outline(self.background, rpos, self.brush, self)
 
@@ -356,6 +393,7 @@ class LevelEditor(Editor_Box):
             # print("rednering", self.id)
             self.image = self.background
             self.dirty = False
+            
             # draw grids
             left = 0
             top = 0
@@ -383,10 +421,20 @@ class TileMap(Editor_Box):
     def __init__(self, parent, l, t, r, b):
         """Constructor for a tilemap - fills 100% of parent object"""
         super().__init__(parent, 0, 0, 1, 1)
-        
+        self.parent = parent
+
         # chunks dict
         self.chunks = {}
+
+        # dirty?
+        self.dirty = True
     
+    def set_tile_at_event(self, data: dict):
+        """set tile using given dict event"""
+        print("TileMap: ", data)
+        self.dirty = True
+        self.set_tile_at(data['x'], data['y'], data['img'])
+
     def set_tile_at(self, x, y, img: str):
         """Sets a tile at a given position"""
         # find the chunk it is located in
@@ -394,21 +442,34 @@ class TileMap(Editor_Box):
         cy = y // chunk.CHUNK_HEIGHT
         # create chunk if not exist
         h = maths.two_hash(cx, cy)
-        crx = maths.mod(x, chunk.CHUNK_WIDTH) // chunk.TILE_WIDTH
-        cry = maths.mod(y, chunk.CHUNK_HEIGHT) // chunk.TILE_WIDTH
+        crx = int(x - cx * chunk.CHUNK_WIDTH)
+        cry = int(y - cy * chunk.CHUNK_HEIGHT)
+        # TODO - create new chunk object
         if self.chunks.get(h):
             # set pos
-            self.chunks.get(h).set_tile_at([crx, cry, img])
+            self.chunks.get(h).set_tile_at([crx, cry, img, 0])
         else:
             # make a chunk
             new_chunk = chunk.Chunk(cx, cy)
-            new_chunk.set_tile_at([crx, cry, img])
+            new_chunk.set_tile_at([crx, cry, img, 0])
             self.chunks[h] = new_chunk
-    
-    def update(self, dt):
-        """update the stuff"""
-        # set the background image to the parent background
-        # draw directly onto parent background
-        
-        pass
+
+    def render_grid(self, window, offset):
+        """Render grid whenever"""
+        # check if dirty
+        bw = self.parent.block_width
+        cw = bw * chunk.CHUNK_WIDTH
+        ch = bw * chunk.CHUNK_HEIGHT
+        for h, cc in self.chunks.items():
+            # render the blocks into the grid
+            # check if chunk is on screen first
+            for tile in cc.grid:
+                # if image
+                if tile[chunk.TILE_I]:
+                    # render
+                    x = tile[chunk.TILE_X] * bw + cw * cc.pos[0]
+                    y = tile[chunk.TILE_Y] * bw + ch * cc.pos[1]
+                    tile[chunk.TILE_I].set_alpha(255)
+                    window.blit(tile[chunk.TILE_I], (x - offset[0], y - offset[1]))
+                    tile[chunk.TILE_I].set_alpha(128)
 

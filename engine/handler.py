@@ -19,12 +19,12 @@ class Handler:
         # changed?
         self.changed = True
     
-    def add_entity(self, entity):
+    def add_entity(self, entity, sort=True):
         """Add entity to the world"""
         self.entities[entity.id] = entity
         self.active_entites.append(entity.id)
-        # sort
-        self.active_entites.sort(key=lambda x: self.entities[x].z_index)
+        if sort:
+            self.active_entites.sort(key=lambda x: self.entities[x].z_index)
     
     def add_chunk(self, chunk):
         """Add chunk to the world"""
