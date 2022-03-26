@@ -5,7 +5,7 @@ import pyperclip
 from engine import window, user_input, clock, statehandler, state, filehandler, eventhandler
 from src import editor_box, art_tool
 
-FPS = 24
+FPS = 30
 
 
 window.create_instance("Level Editor", 1280, 720)
@@ -28,17 +28,9 @@ global_state.handler.add_entity(back)
 
 container = back.create_child(editor_box.SideBarSelection, 0.01, 0.01, 0.99, 0.99)
 container.column = 3
+container.padding = 2
+
 # hovering_items.append(container)
-
-# item = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
-# item.sprite_path = "assets/art.png"
-# item.grid_position = 1
-# container.apply_all_transformations(item)
-
-# item2 = container.create_child(editor_box.SideBarItem, 0.05, 0.05, 0.3, 0.3)
-# item2.sprite_path = "assets/yticon.jpg"
-# item2.grid_position = 2
-# container.apply_all_transformations(item2)
 
 container.load_spritesheet("assets/spritesheets/grass.json")
 
@@ -47,15 +39,13 @@ editor = editor_box.Editor_Box(None, 0.305, 0.01, 0.995, 0.99)
 editor.fill_color(CONTAINER_COLOR)
 global_state.handler.add_entity(editor)
 
-
 # add actual editing area
 editor_area = editor.create_child(editor_box.LevelEditor, 0.01, 0.01, 0.99, 0.99)
 editor_area.fill_color((255,255,255))
-editor_area.set_brush_icon(filehandler.get_image("assets/art.png"))
 editor_area.z_index = 2
 
 # tile map
-tilemap = editor_area.create_child(editor_box.TileMap, 0, 0, 1, 1)
+tilemap = editor_area.create_child(editor_box.TileMap, 0.05, 0.05, 0.95, 0.95)
 tilemap.fill_color((255, 255, 255))
 tilemap.z_index = 1
 

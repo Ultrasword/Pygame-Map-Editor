@@ -9,8 +9,11 @@ class Editor_Box(entity.Entity):
         """Constructor for an edtiro box"""
         super().__init__()
         if parent != None:
-            entity.set_entity_properties(parent.area[0] * left + parent.pos[0], parent.area[1] * top + parent.pos[1], 
-                            parent.area[0] * (right - left) + parent.pos[0], parent.area[1] * (bottom - top) + parent.pos[1], None, self)
+            xpos = parent.area[0] * left + parent.pos[0]
+            ypos = parent.area[1] * top + parent.pos[1]
+            width = parent.area[0] * (right - left)
+            height = parent.area[1] * (bottom - top)
+            entity.set_entity_properties(xpos, ypos, width, height, None, self)
         else:
             entity.set_entity_properties(window.WIDTH * left, window.HEIGHT * top, window.WIDTH * (right - left), window.HEIGHT * (bottom - top), None, self)
         if back:
@@ -34,6 +37,7 @@ class Editor_Box(entity.Entity):
         else:
             self.parent_id = 0
         self.children = []
+        self.padding = 0
 
         # stats
         self.hovering = False
@@ -148,6 +152,19 @@ class SideBarSelection(Editor_Box):
         self.items = []
         self.selected = []
         self.used_pos = set()
+    
+    @property
+    def item_padding(self):
+        """Return item padding"""
+        return self.padding
+    
+    @item_padding.setter
+    def item_padding(self, other):
+        """Set item padding"""
+        self.padding = other
+        # resize everything
+        for child in self.children:
+            self.apply_all_transformations(child)
 
     def find_lowest_pos(self):
         """Find the lowest pos for an item part"""
@@ -168,15 +185,17 @@ class SideBarSelection(Editor_Box):
         """Apply all padding, scaling, etc"""
         # transform the image
         self.column
-        n = child.grid_pos % self.column
-        child.pos[0] = self.pos[0] + self.item_width * n
-        n = child.grid_pos // self.column
-        child.pos[1] = self.pos[1] + self.item_width * n
-        child.area[0] = self.item_width
-        child.area[1] = self.item_width
+        # calculate row and col
+        x = child.grid_pos % self.column
+        y = child.grid_pos // self.column
+        # set values for position and apply padding
+        child.pos[0] = self.pos[0] + self.item_width * x + self.padding * (x+1)
+        child.pos[1] = self.pos[1] + self.item_width * y + self.padding * (y+1)
+        child.area[0] = int(self.item_width - self.padding * 2)
+        child.area[1] = child.area[0]
         # scale image
         child.background = filehandler.scale(filehandler.get_image(child.sprite_path), 
-                    (self.item_width, self.item_width))
+                    child.area)
         # add to the set
         self.used_pos.add(child.grid_pos)
 
@@ -260,10 +279,20 @@ class LevelEditor(Editor_Box):
         self.brush = art_tool.Brush(None, 1, self.block_width)
 
         # movespeed
-        self.move_speed = 400
+        self.move_speed = 240
 
         # sprites that can be used
         self.spritesheets = {}
+    
+    @property
+    def camera_move_speed(self):
+        """Returns camera move speed"""
+        return self.move_speed
+    
+    @camera_move_speed.setter
+    def camera_move_speed(self, new):
+        """Set new camera move speed"""
+        self.move_speed = new
 
     @property
     def grid_outline_color(self):
@@ -337,13 +366,13 @@ class LevelEditor(Editor_Box):
             extend = self.block_width
             for x in range(left, right+1):
                 draw.DEBUG_DRAW_LINE(self.background, self.grid_color,
-                    (x * self.block_width + offset[0] - xoff, offset[1] - yoff), 
-                    (x * self.block_width + offset[0] - xoff, self.area[1] + offset[1] - yoff + extend))
+                    (x * self.block_width + offset[0] - xoff, offset[1]), 
+                    (x * self.block_width + offset[0] - xoff, self.area[1] + offset[1] + extend))
             # draw horizontal lines
             for y in range(top, bottom+2):
                 draw.DEBUG_DRAW_LINE(self.background, self.grid_color,
-                    (offset[0] - xoff, y * self.block_width + offset[1] - yoff),
-                    (self.area[0] + offset[0] - xoff, y * self.block_width + offset[1] - yoff))
+                    (offset[0], y * self.block_width + offset[1] - yoff),
+                    (self.area[0] + offset[0], y * self.block_width + offset[1] - yoff))
 
             # draw onto window
             window.blit(self.image, (self.pos[0] + offset[0], self.pos[1] + offset[1]))

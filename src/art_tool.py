@@ -1,4 +1,4 @@
-from engine import filehandler
+from engine import filehandler, draw
 
 
 ACTIVE_EDITOR = None
@@ -57,8 +57,9 @@ class Brush:
         # the standard brush
         # usually drawn using smaller brush sizes
         # print(rel_pos[0] * block_width, rel_pos[1] * block_width)
-        window.blit(self.icon, (rel_pos[0] * block_width + c_offset[0], rel_pos[1] * block_width + c_offset[1]))
-        
+        if self.icon:
+            window.blit(self.icon, (rel_pos[0] * block_width + c_offset[0], rel_pos[1] * block_width + c_offset[1]))
+
         # left = rel_pos[0] * block_width
         # top = rel_pos[1] * block_width
         # for x in range(self.size):
