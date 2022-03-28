@@ -51,6 +51,8 @@ tilemap.z_index = 3
 
 editor_area.set_tile_map(tilemap)
 
+editor_area.save_tile_map_to_file("test.json", container)
+
 # set art tool
 
 

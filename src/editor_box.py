@@ -43,9 +43,11 @@ class Editor_Box(entity.Entity):
 
         # stats
         self.hovering = False
+        self.back_fill_color = (0, 0, 0)
     
     def fill_color(self, color):
         """Fill the color of our surface"""
+        self.back_fill_color = color
         self.background.fill(color)
     
     def render(self, window, offset):
@@ -151,9 +153,13 @@ class SideBarSelection(Editor_Box):
         """Constructor for side bar item selection"""
         super().__init__(parent, left, top, right, bottom)
         # selecion
-        self.items = []
         self.selected = []
         self.used_pos = set()
+        # scrolling
+        self.scrolly = 0
+        self.lowest_bottom = 0
+        # spritesheets
+        self.sprite_sheets = {}
     
     @property
     def item_padding(self):
@@ -191,10 +197,12 @@ class SideBarSelection(Editor_Box):
         x = child.grid_pos % self.column
         y = child.grid_pos // self.column
         # set values for position and apply padding
-        child.pos[0] = self.pos[0] + self.item_width * x + self.padding * (x+1)
-        child.pos[1] = self.pos[1] + self.item_width * y + self.padding * (y+1)
+        child.pos[0] = int(self.pos[0] + self.item_width * x + self.padding * (x+1))
+        child.pos[1] = int(self.pos[1] + self.item_width * y + self.padding * (y+1))
         child.area[0] = int(self.item_width - self.padding * 2)
         child.area[1] = child.area[0]
+        # set rel pos
+        child.rel_pos = [child.pos[0] - self.pos[0], child.pos[1] - self.pos[1], child.area[0], child.area[1]]
         # scale image
         child.background = filehandler.scale(filehandler.get_image(child.sprite_path), 
                     child.area)
@@ -212,8 +220,14 @@ class SideBarSelection(Editor_Box):
         height = data["tile_height"]
         tile_pos = data["tiles"]
         sprite_sheet = filehandler.get_image(image)
+        self.sprite_sheets[file_path] = sprite_sheet
         # add each child to the children
         for pos in tile_pos:
+            if pos == None:
+                # add an empty block
+                grid_pos = self.find_lowest_pos()
+                self.used_pos.add(grid_pos)
+                continue
             # get x and y pos
             x, y = map(int, pos.split("."))
             # grab sprite from the image
@@ -226,7 +240,23 @@ class SideBarSelection(Editor_Box):
             self.apply_all_transformations(item)
             # set image
             item.background = filehandler.scale(filehandler.cut(px, py, width, height, sprite_sheet), (self.item_width, self.item_width))
-        # ggs
+            self.lowest_bottom = max(self.lowest_bottom, item.pos[1] + item.area[1])
+
+    def update(self, dt):
+        """update the objects inside and the side bar"""
+        # get scrolling
+        self.dirty = True
+        self.scrolly -= user_input.y_scroll * 10
+        # set a clamp onto the scrolling
+        self.scrolly = maths.clamp(self.scrolly, 0, self.lowest_bottom)
+        # render the items inside first
+        self.background.fill(self.back_fill_color)
+        for eid in self.children:
+            child = statehandler.CURRENT.handler.entities[eid]
+            child.update_mouse(self.scrolly)
+            # render each child onto background with offset
+            self.background.blit(child.background, (child.rel_pos[0], child.rel_pos[1] - self.scrolly))
+            self.image = self.background
 
 
 class SideBarItem(Editor_Box):
@@ -235,7 +265,7 @@ class SideBarItem(Editor_Box):
         super().__init__(parent, left, top, right, bottom)
         self.image_path = None
         # image etc
-        # print(self.pos, self.area)
+        self.parent = parent
 
     @property
     def sprite(self):
@@ -257,13 +287,41 @@ class SideBarItem(Editor_Box):
         """Set the sprite path"""
         self.image_path = path
 
+    def update_mouse(self, y_scroll):
+        """update but better"""
+        mpos = user_input.get_mouse_pos()
+        self.hovering = False
+        if self.pos[0] > mpos[0]:
+            return
+        if self.pos[0] + self.area[0] < mpos[0]:
+            return
+        if self.pos[1] > mpos[1] + y_scroll:
+            return
+        if self.pos[1] + self.area[1] < mpos[1] + y_scroll:
+            return
+        
+        # is hovering - check if clicking
+        if not user_input.mouse[1]:
+            return
+        
+        # handle clicking stuff
+        if art_tool.ACTIVE_EDITOR:
+            art_tool.ACTIVE_EDITOR.user_brush.icon_image = self.sprite
+        art_tool.ART_ITEM_SELECTION = self
+
     def update(self, dt):
+        """Update function overload"""
         # check if mouse hovers and if click
+        return
         if self.clicked:
             if art_tool.ACTIVE_EDITOR:
                 art_tool.ACTIVE_EDITOR.user_brush.icon_image = self.sprite
             # print("CLICKED!!!")
             art_tool.ART_ITEM_SELECTION = self
+    
+    def render(self, window, offset):
+        """Empty func"""
+        pass
 
 
 class LevelEditor(Editor_Box):
@@ -416,6 +474,31 @@ class LevelEditor(Editor_Box):
             window.blit(self.image, (self.pos[0] + offset[0], self.pos[1] + offset[1]))
             statehandler.CURRENT.handler.changed = True
 
+    def save_tile_map_to_file(self, file_path, sidebar_object):
+        """Save the tilemap to a file"""
+        # make a save buffer
+        buffer = {}
+        # store data into buffer
+        buffer["level_name"] = None
+        # get blocks and texture data
+        buffer["spritesheets"] = {}
+        # just save another copy of all the level sprites
+        for cid in sidebar_object.children:
+            child = statehandler.CURRENT.handler.entities[cid]
+            # check if they are sidebar item object type
+            if type(child) == SideBarItem:
+                print("yes")
+
+        return
+
+        # open file path object
+        with open(file_path, "w") as file:
+            # write data into file
+            
+
+            # close file
+            file.close()
+
 
 class TileMap(Editor_Box):
     def __init__(self, parent, l, t, r, b):
@@ -431,7 +514,7 @@ class TileMap(Editor_Box):
     
     def set_tile_at_event(self, data: dict):
         """set tile using given dict event"""
-        print("TileMap: ", data)
+        # print("TileMap: ", data)
         self.dirty = True
         self.set_tile_at(data['x'], data['y'], data['img'])
 
@@ -472,4 +555,3 @@ class TileMap(Editor_Box):
                     tile[chunk.TILE_I].set_alpha(255)
                     window.blit(tile[chunk.TILE_I], (x - offset[0], y - offset[1]))
                     tile[chunk.TILE_I].set_alpha(128)
-

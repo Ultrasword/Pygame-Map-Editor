@@ -25,12 +25,17 @@ def brush_hover_outline(window, rel_pos_to_container, brush, editor_box):
 
 
 class Brush:
-    def __init__(self, icon, size, width):
+    def __init__(self, icon, size, width, brush_icon=None):
         """Brush constructor"""
         self.icon_path = icon
         self.icon = filehandler.scale(filehandler.get_image(icon), size) if icon else icon
         self.size = size
         self.block_width = width
+        # brush icon for showing
+        self.brush_icon = brush_icon
+        self.brush_icon_image = None
+        if brush_icon:
+            self.brush_icon_image = filehandler.get_image(brush_icon)
 
     @property
     def icon_image(self):

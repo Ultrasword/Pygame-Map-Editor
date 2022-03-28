@@ -47,6 +47,8 @@ def mouse_button_press(key_event):
     if key_event.button < 4:
         mouse[key_event.button] = True
         mouse_pressed_this.add(key_event.button)
+        return
+    mouse_scroll_update(key_event)
 
 
 def mouse_button_release(key_event):
@@ -57,7 +59,12 @@ def mouse_button_release(key_event):
 
 def mouse_scroll_update(scroll_event):
     """Mouse scroll update"""
-    print(scroll_event)
+    global y_scroll
+    # even is up, odd is down
+    direction = scroll_event.button % 2 == 0
+    y_scroll = -scroll_event.button//2
+    if direction:
+        y_scroll = scroll_event.button//2
 
 
 def mouse_move_update(move_event):
@@ -82,5 +89,8 @@ def update_ratio(width, height, o_width, o_height):
 # update both mouse and keyboard
 def update():
     """Updates keyboard - clears the pressed set"""
+    global y_scroll, x_scroll
     pressed.clear()
     mouse_pressed_this.clear()
+    y_scroll = 0
+    x_scroll = 0
